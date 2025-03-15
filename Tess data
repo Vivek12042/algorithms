@@ -1,0 +1,51 @@
+import lightkurve as lk
+import matplotlib.pyplot as plt
+
+# Step 1: Download TESS light curve data
+# Replace with a valid target ID from the TESS catalog
+target_id = 'TIC 283645252'  # A known target from the TESS catalog
+sector = 1  # Sector 1
+
+# Query TESS light curve data
+search_result = lk.search_lightcurve(target_id, mission="TESS", sector=sector)
+
+# Check if data was found
+if search_result is None or len(search_result) == 0:
+    print(f"No light curve data found for target {target_id} in sector {sector}. Please check the target ID and sector.")
+else:
+    # Download the light curve data
+    lc = search_result.download()
+
+    # Step 2: Detrend the light curve
+    lc_detrended = lc.remove_nans().flatten()
+
+    # Step 3: Search for transits using BLS
+    bls = lc_detrended.to_periodogram(method="bls")
+
+    # Step 4: Plot BLS periodogram and identify best period
+    bls.plot()
+    best_period = bls.period_at_max_power
+    print(f"Best period: {best_period}")
+
+    # Step 5: Fold the light curve using the best period
+    transit_model = lc_detrended.fold(period=best_period)
+
+    # Step 6: Plot the results
+    plt.figure(figsize=(10, 5))
+
+    # Plot Raw vs Detrended Light Curves
+    plt.subplot(1, 2, 1)
+    lc.plot(label="Raw Light Curve")
+    plt.title("Raw Light Curve")
+
+    plt.subplot(1, 2, 2)
+    lc_detrended.plot(label="Detrended Light Curve")
+    plt.title("Detrended Light Curve")
+
+    plt.tight_layout()
+    plt.show()
+
+    # Plot Folded Transit Light Curve
+    transit_model.plot(label="Folded Light Curve")
+    plt.title("Folded Light Curve")
+    plt.show()
